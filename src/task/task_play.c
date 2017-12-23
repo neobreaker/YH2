@@ -11,6 +11,8 @@ extern Queue *s_rcv_queue;
 extern vs10xx_cfg_t g_vs10xx_play_cfg;
 extern OS_EVENT* sem_vs1053_play_async;
 extern u8 is_line_established;
+extern rev_buffer_t g_pbuff;
+
 
 u8 vs10xx_play_dma_buff[SEND_NUM_PER_FRAME];
 
@@ -83,12 +85,11 @@ void play()
 			
             while(1)
             {
-                prcv_buff = rcv_queue_dequeue();
-                len = prcv_buff->len;
-                prcv_buff->len = 0;
-                rcv_queue_enqueue(prcv_buff);
-                if(prcv_buff == NULL || len > 0)
+                if(g_pbuff.len > 0)
                 {
+					len = g_pbuff.len;
+					g_pbuff.len = 0;
+					
 					if(prcv_buff->data[0] == 'R' 
 						&& prcv_buff->data[1] == 'I' 
 						&& prcv_buff->data[2] == 'F' 
@@ -98,11 +99,12 @@ void play()
 						continue;
 					}
 					
-                    memcpy(pbuff, prcv_buff->data, len);
+                    memcpy(pbuff, g_pbuff.data, len);
                     g_vs10xx_play_cfg.VS_SPI_SpeedHigh();   //高速
                     vs10xx_play_dma_send_data(pbuff, len);
                     
                 }
+                
 
 				if(!is_line_established)			//通讯中断
 					break;

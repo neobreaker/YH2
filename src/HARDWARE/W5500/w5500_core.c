@@ -260,7 +260,7 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remot
     if(rx_size==0)
         return 0;//没接收到数据则返回
 
-    if(rx_size>808) rx_size=808;
+	if(rx_size>808) rx_size=808;
 
     offset=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD);
     offset1=offset;
@@ -278,6 +278,8 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remot
 
 	if(is_udp)
 	{
+		//if(rx_size>808) rx_size=808;
+		
 		read_rx_buffer(s, (u8*)&udp_hd, offset, 8);
 		udp_hd.size = ntohs(udp_hd.size);
 		*remote_port = udp_hd.port;
@@ -299,7 +301,7 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remot
 		    Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD, offset1);
 		    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, RECV);//发送启动接收命令
 
-			return 0;
+			return rx_size-8;
 		}
 	}
 

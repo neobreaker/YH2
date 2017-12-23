@@ -44,7 +44,7 @@ void startup_task(void *p_arg)
 
     err |= OSTaskCreate(task_play, (void *)0,
                        &task_play_stk[TASK_PLAY_STK_SIZE-1], TASK_PLAY_PRIO);
-    
+   
     err |= OSTaskCreate(task_udpserver, (void *)0,
                         &task_udpserver_stk[TASK_UDPSERVER_STK_SIZE-1], TASK_UDPSERVER_PRIO);
 
