@@ -7,7 +7,6 @@
 
 extern OS_EVENT* sem_vs1053async;
 extern OS_EVENT* sem_vs1053_play_async;
-extern OS_EVENT* sem_rcv_queue;
 
 struct sockaddr_in g_remote_sin;
 

@@ -53,10 +53,10 @@ void task_udpclient(void *p_arg)
 	while(VS_RD_Reg(&g_vs10xx_rec_cfg, SPI_HDAT1)>>8);
     while(1)
     {
-		W5500_Interrupt_Process();
+		//W5500_Interrupt_Process();
 		//OSTimeDly(200);
 		
-        //OSSemPend(sem_vs1053async, 0, &_err);
+        OSSemPend(sem_vs1053async, 0, &_err);
 		
         if(_err == OS_ERR_NONE)
         {
@@ -91,8 +91,8 @@ void task_udpclient(void *p_arg)
                 }
 			
 
-				//if(!is_line_established)		// 通讯结束
-					//break;
+				if(!is_line_established)		// 通讯结束
+					break;
             }
             time_elapse = OSTimeGet() - time_stamp;
             time_elapse = 0;

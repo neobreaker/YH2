@@ -102,9 +102,8 @@ void play()
                     memcpy(pbuff, g_pbuff.data, len);
                     g_vs10xx_play_cfg.VS_SPI_SpeedHigh();   //高速
                     vs10xx_play_dma_send_data(pbuff, len);
-                    
                 }
-                
+				OSTimeDly(2);
 
 				if(!is_line_established)			//通讯中断
 					break;

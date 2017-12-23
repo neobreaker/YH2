@@ -1,6 +1,9 @@
 #include "stm32f10x.h"
 #include "w5500_core.h"
 #include "w5500_socket.h"
+#include "ucos_ii.h"
+
+extern OS_EVENT* sem_w5500;
 
 static w5500_cfg_t* s_w5500_cfgp;
 static netchard_dev_t* s_netchard_devp;
@@ -212,11 +215,11 @@ unsigned short Read_W5500_SOCK_2Byte(w5500_cfg_t *cfg, SOCKET s, unsigned short 
 
 u16 read_rx_buffer(SOCKET s, u8* data, u16 offset, u16 len)
 {
-	u32 i = 0;
-	
+    u32 i = 0;
+
     if((offset+len) < sn_rx_sz[s])//如果最大地址未超过W5500接收缓冲区寄存器的最大地址
     {
-        for(i = 0; i < len; i++) 
+        for(i = 0; i < len; i++)
         {
             *data = s_w5500_cfgp->W5500_SPI_ReadWriteByte(0xff);
             data++;
@@ -225,7 +228,7 @@ u16 read_rx_buffer(SOCKET s, u8* data, u16 offset, u16 len)
     else
     {
         offset = sn_rx_sz[s] - offset;
-		
+
         for(i = 0; i < offset; i++) //循环读取出前offset个字节数据
         {
             *data = s_w5500_cfgp->W5500_SPI_ReadWriteByte(0xff);
@@ -237,7 +240,7 @@ u16 read_rx_buffer(SOCKET s, u8* data, u16 offset, u16 len)
 
         s_w5500_cfgp->W5500_SPI_WriteShort(0x00);//写16位地址
         s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_READ|(s*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
-		
+
         for(; i < len; i++) //循环读取后rx_size-offset个字节数据
         {
             *data=s_w5500_cfgp->W5500_SPI_ReadWriteByte(0xff);//将读取到的数据保存到数据保存缓冲区
@@ -245,8 +248,8 @@ u16 read_rx_buffer(SOCKET s, u8* data, u16 offset, u16 len)
             data++;//数据保存缓冲区指针地址自增1
         }
     }
-	
-	return len;
+
+    return len;
 }
 
 unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remote_ip, u8* remote_port)
@@ -254,65 +257,77 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remot
     unsigned short rx_size;
     unsigned short offset, offset1;
     udp_header_t udp_hd;
-	u8 is_udp = 0;
+    u8 is_udp = 0;
+    u8 err;
 
-    rx_size=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RSR);
-    if(rx_size==0)
-        return 0;//没接收到数据则返回
-
-	if(rx_size>808) rx_size=808;
-
-    offset=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD);
-    offset1=offset;
-    offset&=(sn_rx_sz[s]-1);//计算实际的物理地址
-
-	if((Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR) & 0x0f) == MR_UDP)
+    OSSemPend(sem_w5500, 0, &err);
+    if(err == OS_ERR_NONE)
     {
-		is_udp = 1;
+        rx_size=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RSR);
+        if(rx_size==0)
+            goto exit;//没接收到数据则返回
+
+        if(rx_size>808) rx_size=808;
+
+        offset=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD);
+        offset1=offset;
+        offset&=(sn_rx_sz[s]-1);//计算实际的物理地址
+
+        if((Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR) & 0x0f) == MR_UDP)
+        {
+            is_udp = 1;
+        }
+
+        s_w5500_cfgp->W5500_SCS(RESET);//置W5500的SCS为低电平
+
+        s_w5500_cfgp->W5500_SPI_WriteShort(offset);//写16位地址
+        s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_READ|(s*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
+
+        if(is_udp)
+        {
+            //if(rx_size>808) rx_size=808;
+
+            read_rx_buffer(s, (u8*)&udp_hd, offset, 8);
+            udp_hd.size = ntohs(udp_hd.size);
+            *remote_port = udp_hd.port;
+            *remote_ip = udp_hd.ip;
+
+            offset += 8;
+
+            if(udp_hd.size + 8 == rx_size)
+            {
+                rx_size = udp_hd.size;
+                offset1 += 8;
+            }
+            else
+            {
+                read_rx_buffer(s, dat_ptr, offset, rx_size-8);
+                s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
+
+                offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
+                Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD, offset1);
+                Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, RECV);//发送启动接收命令
+
+                goto exit;
+            }
+        }
+
+        read_rx_buffer(s, dat_ptr, offset, rx_size);
+        s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
+
+        offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
+        Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD, offset1);
+        Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, RECV);//发送启动接收命令
+
+
+        OSSemPost(sem_w5500);
     }
 
-    s_w5500_cfgp->W5500_SCS(RESET);//置W5500的SCS为低电平
-
-    s_w5500_cfgp->W5500_SPI_WriteShort(offset);//写16位地址
-    s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_READ|(s*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
-
-	if(is_udp)
-	{
-		//if(rx_size>808) rx_size=808;
-		
-		read_rx_buffer(s, (u8*)&udp_hd, offset, 8);
-		udp_hd.size = ntohs(udp_hd.size);
-		*remote_port = udp_hd.port;
-		*remote_ip = udp_hd.ip;
-
-		offset += 8;
-		
-		if(udp_hd.size + 8 == rx_size)
-		{
-			rx_size = udp_hd.size;
-			offset1 += 8;
-		}
-		else
-		{
-			read_rx_buffer(s, dat_ptr, offset, rx_size-8);
-			s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
-
-		    offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
-		    Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD, offset1);
-		    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, RECV);//发送启动接收命令
-
-			return rx_size-8;
-		}
-	}
-
-	read_rx_buffer(s, dat_ptr, offset, rx_size);
-	s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
-
-    offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
-    Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_RX_RD, offset1);
-    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, RECV);//发送启动接收命令
-	
     return rx_size;//返回接收到数据的长度
+
+exit:
+    OSSemPost(sem_w5500);
+    return 0;
 }
 
 /*******************************************************************************
@@ -327,54 +342,60 @@ int Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short size
 {
     unsigned short offset,offset1;
     unsigned short i;
+    u8 err;
 
-    if((Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR)&0x0f) == MR_UDP)
+    OSSemPend(sem_w5500, 0, &err);
+    if(err == OS_ERR_NONE)
     {
-        Write_W5500_SOCK_4Byte(s_w5500_cfgp, s, Sn_DIPR,   (unsigned char *)dst_ip);//设置目的主机IP
-        Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_DPORTR, dst_port);//设置目的主机端口号
-    }
-
-    offset=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s,Sn_TX_WR);
-    offset1=offset;
-    offset&=(sn_tx_sz[s]-1);//计算实际的物理地址
-
-    s_w5500_cfgp->W5500_SCS(RESET);//置W5500的SCS为低电平
-
-    s_w5500_cfgp->W5500_SPI_WriteShort(offset);//写16位地址
-    s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_WRITE|(s*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
-
-    if((offset+size)<sn_tx_sz[s])//如果最大地址未超过W5500发送缓冲区寄存器的最大地址
-    {
-        for(i=0; i<size; i++) //循环写入size个字节数据
+        if((Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR)&0x0f) == MR_UDP)
         {
-            s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
+            Write_W5500_SOCK_4Byte(s_w5500_cfgp, s, Sn_DIPR,   (unsigned char *)dst_ip);//设置目的主机IP
+            Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_DPORTR, dst_port);//设置目的主机端口号
         }
-    }
-    else//如果最大地址超过W5500发送缓冲区寄存器的最大地址
-    {
-        offset=sn_tx_sz[s]-offset;
-        for(i=0; i<offset; i++) //循环写入前offset个字节数据
-        {
-            s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
-        }
-        s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
+
+        offset=Read_W5500_SOCK_2Byte(s_w5500_cfgp, s,Sn_TX_WR);
+        offset1=offset;
+        offset&=(sn_tx_sz[s]-1);//计算实际的物理地址
 
         s_w5500_cfgp->W5500_SCS(RESET);//置W5500的SCS为低电平
 
-        s_w5500_cfgp->W5500_SPI_WriteShort(0x00);//写16位地址
+        s_w5500_cfgp->W5500_SPI_WriteShort(offset);//写16位地址
         s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_WRITE|(s*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
 
-        for(; i<size; i++) //循环写入size-offset个字节数据
+        if((offset+size)<sn_tx_sz[s])//如果最大地址未超过W5500发送缓冲区寄存器的最大地址
         {
-            s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
+            for(i=0; i<size; i++) //循环写入size个字节数据
+            {
+                s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
+            }
         }
+        else//如果最大地址超过W5500发送缓冲区寄存器的最大地址
+        {
+            offset=sn_tx_sz[s]-offset;
+            for(i=0; i<offset; i++) //循环写入前offset个字节数据
+            {
+                s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
+            }
+            s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
+
+            s_w5500_cfgp->W5500_SCS(RESET);//置W5500的SCS为低电平
+
+            s_w5500_cfgp->W5500_SPI_WriteShort(0x00);//写16位地址
+            s_w5500_cfgp->W5500_SPI_ReadWriteByte(VDM|RWB_WRITE|(s*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
+
+            for(; i<size; i++) //循环写入size-offset个字节数据
+            {
+                s_w5500_cfgp->W5500_SPI_ReadWriteByte(*dat_ptr++);//写入一个字节的数据
+            }
+        }
+        s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
+
+        offset1+=size;//更新实际物理地址,即下次写待发送数据到发送数据缓冲区的起始地址
+        Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_TX_WR, offset1);
+        Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, SEND);//发送启动发送命令
+
+        OSSemPost(sem_w5500);
     }
-    s_w5500_cfgp->W5500_SCS(SET); //置W5500的SCS为高电平
-
-    offset1+=size;//更新实际物理地址,即下次写待发送数据到发送数据缓冲区的起始地址
-    Write_W5500_SOCK_2Byte(s_w5500_cfgp, s, Sn_TX_WR, offset1);
-    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, SEND);//发送启动发送命令
-
     return 0;
 }
 
@@ -439,9 +460,13 @@ void W5500_Init(w5500_cfg_t *cfg, netchard_dev_t* dev)
 
     Write_W5500_SOCK_1Byte(cfg, 0, Sn_RXBUF_SIZE, 0x08);
     Write_W5500_SOCK_1Byte(cfg, 0, Sn_TXBUF_SIZE, 0x08);
+    Write_W5500_SOCK_1Byte(cfg, 1, Sn_RXBUF_SIZE, 0x08);
+    Write_W5500_SOCK_1Byte(cfg, 1, Sn_TXBUF_SIZE, 0x08);
     sn_tx_sz[0] = 0x2000;
     sn_rx_sz[0] = 0x2000;
-    for(i = 1; i < 8; i++)
+    sn_tx_sz[1] = 0x2000;
+    sn_rx_sz[1] = 0x2000;
+    for(i = 2; i < 8; i++)
     {
         Write_W5500_SOCK_1Byte(cfg, i, Sn_RXBUF_SIZE, 0x00);//Socket Rx memory size=2k
         Write_W5500_SOCK_1Byte(cfg, i, Sn_TXBUF_SIZE, 0x00);//Socket Tx mempry size=2k

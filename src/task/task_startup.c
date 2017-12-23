@@ -35,10 +35,8 @@ void startup_task(void *p_arg)
     /*
     err = OSTaskCreate(task_tcpserver, (void *)0,
                        &task_tcpserver_stk[TASK_TCPSERVER_STK_SIZE-1], TASK_TCPSERVER_PRIO);
-
-    err |= OSTaskCreate(task_udpclient, (void *)0,
-                        &task_udpclient_stk[TASK_UDPCLIENT_STK_SIZE-1], TASK_UDPCLIENT_PRIO);
-	*/
+		*/
+	
 	err |= OSTaskCreate(task_socket, (void *)0,
                         &task_socket_stk[TASK_SOCKET_STK_SIZE-1], TASK_SOCKET_PRIO);
 
@@ -47,6 +45,9 @@ void startup_task(void *p_arg)
    
     err |= OSTaskCreate(task_udpserver, (void *)0,
                         &task_udpserver_stk[TASK_UDPSERVER_STK_SIZE-1], TASK_UDPSERVER_PRIO);
+
+	err |= OSTaskCreate(task_udpclient, (void *)0,
+                        &task_udpclient_stk[TASK_UDPCLIENT_STK_SIZE-1], TASK_UDPCLIENT_PRIO);
 
     if (OS_ERR_NONE != err)
         while(1)
