@@ -21,7 +21,7 @@ void vs10xx_send_data(u8* pbuff, int len)
 	int i = 0;
 	for(i = 0; i < len-SEND_NUM_PER_FRAME; i+=SEND_NUM_PER_FRAME)
     {
-        VS_Send_MusicData(&g_vs10xx_play_cfg, pbuff+i);
+        VS_Send_MusicData2(&g_vs10xx_play_cfg, pbuff+i, SEND_NUM_PER_FRAME);
 		
     }
     if(i < len)
@@ -43,7 +43,7 @@ void vs10xx_play_dma_send_data(u8* pbuff, int len)
 			vs10xx_play_dma_enable(SEND_NUM_PER_FRAME);
 			
 		}
-		OSTimeDly(2);
+		OSTimeDly(1);
 		g_vs10xx_play_cfg.VS_XDCS(1);
     }
     if(i < len)
@@ -55,7 +55,8 @@ void vs10xx_play_dma_send_data(u8* pbuff, int len)
 			SPI_I2S_DMACmd(SPI3, SPI_I2S_DMAReq_Tx, ENABLE);
 			vs10xx_play_dma_enable(len -i);
 		}
-		OSTimeDly(2);
+		OSTimeDly(1);
+		g_vs10xx_play_cfg.VS_XDCS(1);
     }
 }
 
