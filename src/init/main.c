@@ -18,6 +18,7 @@ OS_EVENT* sem_vs1053async;          //TEST
 OS_EVENT* sem_vs1053_play_async;
 OS_EVENT* mbox_play_rcv;
 OS_EVENT* sem_w5500;
+OS_EVENT* sem_w5500_dma;
 
 vs10xx_cfg_t g_vs10xx_rec_cfg;
 vs10xx_cfg_t g_vs10xx_play_cfg;
@@ -79,6 +80,7 @@ int main(void)
     sem_vs1053_play_async   = OSSemCreate(0);
 	mbox_play_rcv			= OSMboxCreate(0);
 	sem_w5500				= OSSemCreate(1);
+	sem_w5500_dma			= OSSemCreate(0);
 
     OSTaskCreate(startup_task, (void *)0,
                  &startup_task_stk[STARTUP_TASK_STK_SIZE - 1],

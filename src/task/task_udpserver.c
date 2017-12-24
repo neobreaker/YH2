@@ -23,7 +23,7 @@ static void rev_buffer_init()
 
 }
 
-static u32 time_stamp = 0, time_elapse = 0;
+
 void task_udpserver(void *p_arg)
 {
 
@@ -33,7 +33,6 @@ void task_udpserver(void *p_arg)
     int sock_fd;
     int ret = 0;
 
-    u32 now = 0;
     rev_buffer_init();
 
 
@@ -59,10 +58,6 @@ void task_udpserver(void *p_arg)
 
         g_pbuff.len = recvfrom(sock_fd, g_pbuff.data, RCV_BUFFER_SIZE, 0, &g_remote_sin, &sin_len);
 
-        now = OSTimeGet();
-        time_elapse = now - time_stamp;
-        time_stamp = now;
-		
         ret = parse_AT(g_pbuff.data, RCV_BUFFER_SIZE);
         if(ret)
         {

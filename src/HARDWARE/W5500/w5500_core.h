@@ -241,7 +241,7 @@ void W5500_Socket_Init(SOCKET s, u16 port);
 void W5500_Socket_UDP(SOCKET s);
 unsigned char W5500_Socket_UDP_Open(SOCKET s);
 int Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short size, unsigned char *dst_ip, unsigned short dst_port);
-unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u8* remote_ip, u8* remote_port);
+unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u32* remote_ip, u16* remote_port);
 
 void W5500_Interrupt_Process(void);
 #endif

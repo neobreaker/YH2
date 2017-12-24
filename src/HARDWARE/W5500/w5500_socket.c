@@ -9,6 +9,7 @@ extern OS_EVENT* mbox_play_rcv;
 static u8 s_socket_usage = 0;
 static u8 s_socket_type[8];
 
+u8 w5500_send_buffer[2048];
 
 int socket(int domain, int type, int protocol)
 {
@@ -73,7 +74,9 @@ int sendto(int s, const void *data, u32 size, int flags,
 {
     int snd_len = 0;
 
-    Write_SOCK_Data_Buffer(s, (u8*)data, size, (u8*)&(to->sin_addr), to->sin_port);
+	memcpy(w5500_send_buffer, data, size);
+	
+    Write_SOCK_Data_Buffer(s, (u8*)w5500_send_buffer, size, (u8*)&(to->sin_addr), to->sin_port);
 
     return snd_len;
 }
@@ -88,6 +91,9 @@ int recvfrom(int s, void *mem, u32 len, int flags, struct sockaddr_in *from, soc
 
     if(err == OS_ERR_NONE)
     {
+		from->sin_addr.s_addr = mail->remote_ip;
+		from->sin_port = mail->remote_port;
+		
         rcv_len = (mail->len > len) ? len : mail->len;
 
         memcpy(mem, mail->data, rcv_len);

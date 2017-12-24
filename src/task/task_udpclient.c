@@ -14,6 +14,7 @@ extern struct sockaddr_in g_remote_sin;
 extern vs10xx_cfg_t g_vs10xx_rec_cfg;
 
 static u32 time_stamp = 0, time_elapse = 0;
+
 void task_udpclient(void *p_arg)
 {
 	
@@ -60,10 +61,10 @@ void task_udpclient(void *p_arg)
 		
         if(_err == OS_ERR_NONE)
         {
-            //sin.sin_addr.s_addr = g_remote_sin.sin_addr.s_addr;
-            //sin.sin_port = htons(ntohs(g_remote_sin.sin_port)-1);
-            sin.sin_addr.s_addr = 0x4602a8c0;
-			sin.sin_port = 50000;
+            sin.sin_addr.s_addr = g_remote_sin.sin_addr.s_addr;
+            sin.sin_port = ntohs(g_remote_sin.sin_port)-1;
+            //sin.sin_addr.s_addr = 0x4602a8c0;
+			//sin.sin_port = 50000;
             time_stamp = OSTimeGet();
 			
 			cnt = 500;
@@ -86,6 +87,7 @@ void task_udpclient(void *p_arg)
                         snddata[idx++]=w&0XFF;
                         snddata[idx++]=w>>8;
                     }
+                    
                     sendto(sock_fd, snddata, 512, 0, &sin, sizeof(sin));
                     
                 }

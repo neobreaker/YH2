@@ -18,7 +18,7 @@ void task_socket(void *p_arg)
 	
 	while(1)
 	{
-		g_pack.len = Read_SOCK_Data_Buffer(0, g_pack.data, (u8*)&g_pack.remote_ip, (u8*)&g_pack.remote_port);
+		g_pack.len = Read_SOCK_Data_Buffer(0, g_pack.data, &g_pack.remote_ip, &g_pack.remote_port);
 		if(g_pack.len > 0)
 			OSMboxPost(mbox_play_rcv, &g_pack);
 		OSTimeDly(4);
