@@ -71,14 +71,14 @@
 #define VERR        0x0039
 
 /********************* Socket Register *******************/
-#define Sn_MR       0x0000
+#define Sn_MR       	0x0000
 #define MULTI_MFEN      0x80
 #define BCASTB          0x40
 #define ND_MC_MMB       0x20
 #define UCASTB_MIP6B    0x10
 #define MR_CLOSE        0x00
-#define MR_TCP      0x01
-#define MR_UDP      0x02
+#define MR_TCP      	0x01
+#define MR_UDP      	0x02
 #define MR_MACRAW       0x04
 
 #define Sn_CR       0x0001
@@ -225,12 +225,12 @@ typedef struct
 
 } netchard_dev_t;
 
-typedef __packed struct 
+typedef __packed struct
 {
-	u32 ip;
-	u16 port;
-	u16 size;
-}udp_header_t;
+    u32 ip;
+    u16 port;
+    u16 size;
+} udp_header_t;
 
 typedef u8 SOCKET;
 
@@ -239,7 +239,11 @@ void W5500_Init(w5500_cfg_t *cfg, netchard_dev_t* dev);
 void W5500_Hardware_Reset(w5500_cfg_t *cfg);
 void W5500_Socket_Init(SOCKET s, u16 port);
 void W5500_Socket_UDP(SOCKET s);
+void W5500_Socket_TCP(SOCKET s);
 unsigned char W5500_Socket_UDP_Open(SOCKET s);
+unsigned char W5500_Socket_TCP_Open(SOCKET s);
+unsigned char W5500_Socket_TCP_Listen(SOCKET s);
+unsigned char W5500_Socket_TCP_Connect(SOCKET s);
 int Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short size, unsigned char *dst_ip, unsigned short dst_port);
 unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u32* remote_ip, u16* remote_port);
 

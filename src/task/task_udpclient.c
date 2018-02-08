@@ -91,8 +91,7 @@ void task_udpclient(void *p_arg)
                     sendto(sock_fd, snddata, 512, 0, &sin, sizeof(sin));
                     
                 }
-			
-
+				
 				if(!is_line_established)		// Í¨Ñ¶½áÊø
 					break;
             }

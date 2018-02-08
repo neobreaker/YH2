@@ -289,6 +289,7 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u32* remo
         {
             //if(rx_size>808) rx_size=808;
 
+            //udp frame has 8 bytes header
             read_rx_buffer(s, (u8*)&udp_hd, offset, 8);
             udp_hd.size = ntohs(udp_hd.size);
             *remote_port = udp_hd.port;
@@ -298,8 +299,8 @@ unsigned short Read_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, u32* remo
 
             if(udp_hd.size + 8 == rx_size)
             {
-                rx_size = udp_hd.size;
-                offset1 += 8;
+                rx_size = udp_hd.size;      //if udp; remove 8 bytes header
+                offset1 += 8;       //rx_size -= 8
             }
             else        //err occur
             {
@@ -499,6 +500,7 @@ void W5500_Init(w5500_cfg_t *cfg, netchard_dev_t* dev)
 
     //设置发送缓冲区和接收缓冲区的大小，参考W5500数据手册
 
+/*
     Write_W5500_SOCK_1Byte(cfg, 0, Sn_RXBUF_SIZE, 0x08);
     Write_W5500_SOCK_1Byte(cfg, 0, Sn_TXBUF_SIZE, 0x08);
     Write_W5500_SOCK_1Byte(cfg, 1, Sn_RXBUF_SIZE, 0x08);
@@ -507,7 +509,16 @@ void W5500_Init(w5500_cfg_t *cfg, netchard_dev_t* dev)
     sn_rx_sz[0] = 0x2000;
     sn_tx_sz[1] = 0x2000;
     sn_rx_sz[1] = 0x2000;
-    for(i = 2; i < 8; i++)
+*/
+	for(i = 0; i < 4; i++)
+    {
+        Write_W5500_SOCK_1Byte(cfg, i, Sn_RXBUF_SIZE, 0x04);//Socket Rx memory size=2k
+        Write_W5500_SOCK_1Byte(cfg, i, Sn_TXBUF_SIZE, 0x04);//Socket Tx mempry size=2k
+
+        sn_tx_sz[i] = 4096;
+        sn_rx_sz[i] = 4096;
+    }
+    for(; i < 8; i++)
     {
         Write_W5500_SOCK_1Byte(cfg, i, Sn_RXBUF_SIZE, 0x00);//Socket Rx memory size=2k
         Write_W5500_SOCK_1Byte(cfg, i, Sn_TXBUF_SIZE, 0x00);//Socket Tx mempry size=2k
@@ -600,20 +611,11 @@ unsigned char W5500_Socket_Listen(SOCKET s)
     //在服务器侦听模式不需要设置目的IP和目的端口号
 }
 
-/*******************************************************************************
-* 函数名  : Socket_UDP
-* 描述    : 设置指定Socket(0~7)为UDP模式
-* 输入    : s:待设定的端口
-* 输出    : 无
-* 返回值  : 成功返回TRUE(0xFF),失败返回FALSE(0x00)
-* 说明    : 如果Socket工作在UDP模式,引用该程序,在UDP模式下,Socket通信不需要建立连接
-*           该程序只调用一次，就使W5500设置为UDP模式
-*******************************************************************************/
 void W5500_Socket_UDP(SOCKET s)
 {
     Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR, MR_UDP);//设置Socket为UDP模式*/
-
 }
+
 unsigned char W5500_Socket_UDP_Open(SOCKET s)
 {
     Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, OPEN);//打开Socket*/
@@ -625,6 +627,46 @@ unsigned char W5500_Socket_UDP_Open(SOCKET s)
     }
     else
         return TRUE;
+}
+
+
+void W5500_Socket_TCP(SOCKET s)
+{
+    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_MR, MR_TCP);//设置Socket为tcp模式*/
+
+}
+
+unsigned char W5500_Socket_TCP_Open(SOCKET s)
+{
+    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, OPEN);
+
+    delay_ms(5);
+    if(Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_SR) != SOCK_INIT)
+    {
+        Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, CLOSE);
+        return FALSE;
+    }
+	return TRUE;
+}
+
+unsigned char W5500_Socket_TCP_Listen(SOCKET s)
+{
+    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, LISTEN);
+
+    delay_ms(5);
+    if(Read_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_SR) != SOCK_LISTEN)
+    {
+        Write_W5500_SOCK_1Byte(s_w5500_cfgp, s, Sn_CR, CLOSE);
+        return FALSE;
+    }
+	return TRUE;
+}
+
+unsigned char W5500_Socket_TCP_Connect(SOCKET s)
+{
+    Write_W5500_SOCK_1Byte(s_w5500_cfgp, s,Sn_CR,CONNECT);
+
+    return TRUE;
 }
 
 /*******************************************************************************

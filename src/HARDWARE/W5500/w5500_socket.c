@@ -35,6 +35,8 @@ int socket(int domain, int type, int protocol)
             s_socket_type[i] = SOCK_DGRAM;
             break;
         case SOCK_STREAM:
+			W5500_Socket_TCP(i);
+			s_socket_type[i] = SOCK_STREAM;
             break;
         default:
             return -1;
@@ -61,12 +63,24 @@ int bind(int s, const struct sockaddr_in *name, socklen_t namelen)
                 ret = -1;
             break;
         case SOCK_STREAM:
+			if(!W5500_Socket_TCP_Open(s))
+				return -1;
             break;
         default:
             return -1;
     }
 
     return ret;
+}
+
+int listen(int s, int backlog)
+{
+	return W5500_Socket_TCP_Listen(s);
+}
+
+int connect(int s, const struct sockaddr *name, socklen_t namelen)
+{
+	return W5500_Socket_TCP_Connect(s);
 }
 
 int sendto(int s, const void *data, u32 size, int flags,
