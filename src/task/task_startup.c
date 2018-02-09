@@ -2,8 +2,8 @@
 #include "stm32f10x.h"
 #include "task_startup.h"
 
-//static OS_STK task_tcpserver_stk[TASK_TCPSERVER_STK_SIZE];
-static OS_STK task_udpserver_stk[TASK_TCPSERVER_STK_SIZE];
+static OS_STK task_tcpserver_stk[TASK_TCPSERVER_STK_SIZE];
+static OS_STK task_udpserver_stk[TASK_UDPSERVER_STK_SIZE];
 static OS_STK task_udpclient_stk[TASK_UDPCLIENT_STK_SIZE];
 static OS_STK task_play_stk[TASK_PLAY_STK_SIZE];
 static OS_STK task_socket_stk[TASK_SOCKET_STK_SIZE];
@@ -32,10 +32,9 @@ void startup_task(void *p_arg)
     /* TODO: create application tasks here */
 
 
-    /*
+    
     err = OSTaskCreate(task_tcpserver, (void *)0,
                        &task_tcpserver_stk[TASK_TCPSERVER_STK_SIZE-1], TASK_TCPSERVER_PRIO);
-		*/
 	
 	err |= OSTaskCreate(task_socket, (void *)0,
                         &task_socket_stk[TASK_SOCKET_STK_SIZE-1], TASK_SOCKET_PRIO);

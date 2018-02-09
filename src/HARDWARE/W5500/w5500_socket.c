@@ -4,7 +4,7 @@
 #include "task_socket.h"
 #include <string.h>
 
-extern OS_EVENT* mbox_play_rcv;
+extern OS_EVENT* mbox_sock_rcv[W5500_SOCKET_NUM];
 
 static u8 s_socket_usage = 0;
 static u8 s_socket_type[8];
@@ -86,13 +86,22 @@ int connect(int s, const struct sockaddr *name, socklen_t namelen)
 int sendto(int s, const void *data, u32 size, int flags,
            const struct sockaddr_in *to, socklen_t tolen)
 {
-    int snd_len = 0;
 
 	memcpy(w5500_send_buffer, data, size);
 	
     Write_SOCK_Data_Buffer(s, (u8*)w5500_send_buffer, size, (u8*)&(to->sin_addr), to->sin_port);
 
-    return snd_len;
+    return size;
+}
+
+//Be careful, only use for tcp
+int send(int s, const void *data, u32 size, int flags)
+{
+	memcpy(w5500_send_buffer, data, size);
+	
+    Write_SOCK_Data_Buffer(s, (u8*)w5500_send_buffer, size, NULL, 0);
+
+    return size;
 }
 
 int recvfrom(int s, void *mem, u32 len, int flags, struct sockaddr_in *from, socklen_t *fromlen)
@@ -101,7 +110,7 @@ int recvfrom(int s, void *mem, u32 len, int flags, struct sockaddr_in *from, soc
     u8 err;
     rcv_pack_t *mail = NULL;
 
-    mail = OSMboxPend(mbox_play_rcv, 0, &err);
+    mail = OSMboxPend(mbox_sock_rcv[s], 0, &err);
 
     if(err == OS_ERR_NONE)
     {

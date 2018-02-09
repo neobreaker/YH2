@@ -2,6 +2,7 @@
 #define _W5500_CORE_H_
 
 #include "delay.h"
+#include "w5500_cfg.h"
 
 /***************** Common Register *****************/
 #define MR      0x0000

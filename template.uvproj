@@ -692,6 +692,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\task\task_socket.c</FilePath>
             </File>
+            <File>
+              <FileName>task_tcpserver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\task\task_tcpserver.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

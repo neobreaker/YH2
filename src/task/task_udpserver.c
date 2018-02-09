@@ -15,7 +15,6 @@ rev_buffer_t g_pbuff;
 
 static void rev_buffer_init()
 {
-    int i = 0;
 
     g_pbuff.data = pvPortMalloc(RCV_BUFFER_SIZE);
     g_pbuff.len = 0;
